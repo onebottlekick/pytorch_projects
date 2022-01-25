@@ -58,37 +58,25 @@ class VOC2012(Dataset):
                 request.urlretrieve(URL, SAVE_PATH, reporthook=t.update_to)
     
             with tarfile.TarFile(SAVE_PATH) as f:
-                f.extractall('datasets')
+                f.extractall(self.root)
     
     def make_data_path_list(self):
         data_path = os.path.join(self.root, 'VOCdevkit', 'VOC2012')
         
         if self.train:
-            id_names = os.path.join(data_path, 'ImageSets/Segmentation/train.txt')
-            img_list = []
-            annotation_list = []
-            for line in open(id_names):
-                file_id = line.strip()
-
-                img_path = os.path.join(data_path, 'JPEGImages', f'{file_id}.jpg')
-                img_list.append(img_path)            
-
-                annotation_path = os.path.join(data_path, 'SegmentationClass', f'{file_id}.png')
-                annotation_list.append(annotation_path)
-                
-            return img_list, annotation_list
-        
+            id_names = os.path.join(data_path, 'ImageSets', 'Segmentation', 'train.txt')
         else:
-            id_names = os.path.join(data_path, 'ImageSets/Segmentation/val.txt')
-            img_list = []
-            annotation_list = []
-            for line in open(id_names):
-                file_id = line.strip()
+            id_names = os.path.join(data_path, 'ImageSets', 'Segmentation', 'val.txt')
+            
+        img_list = []
+        annotation_list = []
+        for line in open(id_names):
+            file_id = line.strip()
 
-                img_path = os.path.join(data_path, 'JPEGImages', f'{file_id}.jpg')
-                img_list.append(img_path)            
+            img_path = os.path.join(data_path, 'JPEGImages', f'{file_id}.jpg')
+            img_list.append(img_path)            
 
-                annotation_path = os.path.join(data_path, 'SegmentationClass', f'{file_id}.png')
-                annotation_list.append(annotation_path)
+            annotation_path = os.path.join(data_path, 'SegmentationClass', f'{file_id}.png')
+            annotation_list.append(annotation_path)
                 
-            return img_list, annotation_list
+        return img_list, annotation_list
