@@ -48,3 +48,36 @@ class PSPNet(nn.Module):
         output = self.decode_feature(x)
         
         return (output, output_aux)
+    
+    
+class ConvBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, dilation, bias):
+        super(ConvBlock, self).__init__()
+        
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, bias=bias)
+        self.batchnorm = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU()
+        
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.batchnorm(x)
+        outputs = self.relu(x)
+        return outputs
+    
+    
+class FeatureMap_convolution(nn.Module):
+    def __init__(self):
+        super(FeatureMap_convolution, self).__init__()
+        
+        self.conv1 = ConvBlock(3, 64, kernel_size=3, stride=2, padding=1, dilation=1, bias=False)
+        self.conv2 = ConvBlock(64, 64, kernel_size=3, stride=1, padding=1, dilation=1, bias=False)
+        self.conv3 = ConvBlock(64, 128, kernel_size=3, stride=1, padding=1, dilation=1, bias=False)
+        
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.conv3(x)
+        outputs = self.maxpool(x)
+        return outputs
