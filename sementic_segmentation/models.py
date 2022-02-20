@@ -123,3 +123,56 @@ class BottleneckPSP(nn.Module):
         residual = self.conv_residual(x)
         return self.relu(conv + residual)
         
+        
+class BottleneckIdentifyPSP(nn.Module):
+    def __init__(self, in_channels, mid_channels, stride, dilation):
+        super(BottleneckIdentifyPSP, self).__init__()
+        
+        self.conv1 = ConvBlockWithActivation(in_channels, mid_channels, kernel_size=1, stride=1, padding=0, dilation=1, bias=False)
+        self.conv2 = ConvBlockWithActivation(mid_channels, mid_channels, kernel_size=3, stride=1, padding=dilation, dilation=dilation, bias=False)
+        self.conv3 = ConvBlockWithoutActivation(mid_channels, in_channels, kernel_size=1, stride=1, padding=0, dilation=1, bias=False)
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        conv = self.conv3(self.conv2(self.conv1(x)))
+        residual = x
+        return self.relu(conv + residual)
+    
+    
+class PyramidPooling(nn.Module):
+    def __init__(self, in_channels, pool_sizes, height, width):
+        super(PyramidPooling, self).__init__()
+        
+        self.height = height
+        self.width = width
+        
+        out_channels = int(in_channels/len(pool_sizes))
+
+        self.avgpool1 = nn.AdaptiveAvgPool2d(output_size=pool_sizes[0])
+        self.conv1 = ConvBlockWithActivation(in_channels, out_channels, kernel_size=1, stride=1, padding=0, dilation=1, bias=False)
+        
+        self.avgpool2 = nn.AdaptiveAvgPool2d(output_size=pool_sizes[1])
+        self.conv2 = ConvBlockWithActivation(in_channels, out_channels, kernel_size=1, stride=1, padding=0, dilation=1, bias=False)
+        
+        self.avgpool3 = nn.AdaptiveAvgPool2d(output_size=pool_sizes[2])
+        self.conv3 = ConvBlockWithActivation(in_channels, out_channels, kernel_size=1, stride=1, padding=0, dilation=1, bias=False)
+        
+        self.avgpool4 = nn.AdaptiveAvgPool2d(output_size=pool_sizes[3])
+        self.conv4 = ConvBlockWithActivation(in_channels, out_channels, kernel_size=1, stride=1, padding=0, dilation=1, bias=False)
+
+    def forward(self, x):
+        out1 = self.conv1(self.avgpool1(x))
+        out1 = nn.Upsample(size=(self.height, self.width), mode='bilinear', align_corners=True)
+        
+        out2 = self.conv2(self.avgpool2(x))
+        out2 = nn.Upsample(size=(self.height, self.width), mode='bilinear', align_corners=True)
+        
+        out3 = self.conv3(self.avgpool3(x))
+        out3 = nn.Upsample(size=(self.height, self.width), mode='bilinear', align_corners=True)
+        
+        out4 = self.conv4(self.avgpool4(x))
+        out4 = nn.Upsample(size=(self.height, self.width), mode='bilinear', align_corners=True)
+        
+        output = torch.cat([x, out1, out2, out3, out4], dim=1)
+
+        return output
