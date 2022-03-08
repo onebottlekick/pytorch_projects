@@ -162,17 +162,55 @@ class PyramidPooling(nn.Module):
 
     def forward(self, x):
         out1 = self.conv1(self.avgpool1(x))
-        out1 = nn.Upsample(size=(self.height, self.width), mode='bilinear', align_corners=True)
+        out1 = nn.Upsample(size=(self.height, self.width), mode='bilinear', align_corners=True)(out1)
         
         out2 = self.conv2(self.avgpool2(x))
-        out2 = nn.Upsample(size=(self.height, self.width), mode='bilinear', align_corners=True)
+        out2 = nn.Upsample(size=(self.height, self.width), mode='bilinear', align_corners=True)(out2)
         
         out3 = self.conv3(self.avgpool3(x))
-        out3 = nn.Upsample(size=(self.height, self.width), mode='bilinear', align_corners=True)
+        out3 = nn.Upsample(size=(self.height, self.width), mode='bilinear', align_corners=True)(out3)
         
         out4 = self.conv4(self.avgpool4(x))
-        out4 = nn.Upsample(size=(self.height, self.width), mode='bilinear', align_corners=True)
+        out4 = nn.Upsample(size=(self.height, self.width), mode='bilinear', align_corners=True)(out4)
         
         output = torch.cat([x, out1, out2, out3, out4], dim=1)
 
+        return output
+    
+    
+class DecoderPSPFeature(nn.Module):
+    def __init__(self, hight, width, n_classes):
+        super(DecoderPSPFeature, self).__init__()
+        
+        self.height = height
+        self.width = width
+        
+        self.cbr = ConvBlockWithActivation(4096, 512, kernel_size=3, stride=1, padding=1, dilation=1, bias=False)
+        self.dropout = nn.Dropout2d(p=0.1)
+        self.classification = nn.Conv2d(512, n_classes, kernel_size=1, stride=1, padding=0)
+        
+    def forward(self, x):
+        x = self.cbr(x)
+        x = self.dropout(x)
+        x = self.classification(x)
+        output = nn.Upsample(size=(self.height, self.width), mode='bilinear', align_corners=True)(x)
+        return output
+    
+    
+class AuxiliaryPSPLayers(nn.Module):
+    def __init__(self, in_channels, height, width, n_classes):
+        super(AuxiliaryPSPLayers, self).__init__()
+        
+        self.height = height
+        self.width = width
+        
+        self.cbr = ConvBlockWithActivation(in_channels, 256, kernel_size=3, stride=1, padding=1, dilation=1, bias=False)
+        self.dropout = nn.Dropout2d(p=0.1)
+        self.classification = nn.Conv2d(256, n_classes, kernel_size=1, stride=1, padding=0)
+        
+    def forward(self, x):
+        x = self.cbr(x)
+        x = self.dropout(x)
+        x = self.classification(x)
+        output = nn.Upsample(size=(self.height, self.width), mode='bilinear', align_corners=True)(x)
         return output
