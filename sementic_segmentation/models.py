@@ -24,13 +24,13 @@ class PSPNet(nn.Module):
             n_blocks=block_config[3], in_channels=1024, mid_channels=512, out_channels=2048, stride=1, dilation=4
         )
         
-        self.pyramid_pooling = PyramidPooling(in_channels=2048, pool_size=[6, 3, 2, 1], height=img_size_8, width=img_size_8)
+        self.pyramid_pooling = PyramidPooling(in_channels=2048, pool_sizes=[6, 3, 2, 1], height=img_size_8, width=img_size_8)
         
         self.decode_feature = DecodePSPFeature(
             height=img_size, width=img_size, n_classes=n_classes
         )
         
-        self.aux = AuxiliaryPSPlayers(
+        self.aux = AuxiliaryPSPLayers(
             in_channels=1024, height=img_size, width=img_size, n_classes=n_classes
         )
         
@@ -83,14 +83,14 @@ class FeatureMap_convolution(nn.Module):
         return outputs
     
     
-class ResidualBlockPSP(nn.Sequnetial):
+class ResidualBlockPSP(nn.Sequential):
     def __init__(self, n_blocks, in_channels, mid_channels, out_channels, stride, dilation):
         super(ResidualBlockPSP, self).__init__()
         
         self.add_module('block1', BottleneckPSP(in_channels, mid_channels, out_channels, stride, dilation))
         
         for i in range(n_blocks - 1):
-            self.add_module('block' + str(i+2), BottleneckPSP(out_channels, mid_channels, stride, dilation))
+            self.add_module('block' + str(i+2), BottleneckIdentifyPSP(out_channels, mid_channels, stride, dilation))
             
 
 class ConvBlockWithoutActivation(nn.Module):
@@ -178,9 +178,9 @@ class PyramidPooling(nn.Module):
         return output
     
     
-class DecoderPSPFeature(nn.Module):
-    def __init__(self, hight, width, n_classes):
-        super(DecoderPSPFeature, self).__init__()
+class DecodePSPFeature(nn.Module):
+    def __init__(self, height, width, n_classes):
+        super(DecodePSPFeature, self).__init__()
         
         self.height = height
         self.width = width
