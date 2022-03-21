@@ -91,12 +91,15 @@ class CocoDataset(Dataset):
         else:
             print('Dataset already exists!')
         
-        
-        self.coco_data = COCO(os.path.join(self.root, 'annotations', 'captions_train2014.json'))
+        if train:
+            self.coco_data = COCO(os.path.join(self.root, 'annotations', 'captions_train2014.json'))
+            vocab = Vocab(self.root, os.path.join(self.root, 'annotations', 'captions_train2014.json'), 4)
+        else:
+            self.coco_data = COCO(os.path.join(self.root, 'annotations', 'captions_val2014.json'))
+            vocab = Vocab(self.root, os.path.join(self.root, 'annotations', 'captions_val2014.json'), 4)
         self.indices = list(self.coco_data.anns.keys())
-        self.transform = transform
-            
-        vocab = Vocab(self.root, os.path.join(self.root, 'annotations', 'captions_train2014.json'), 4)
+        self.transform = transform            
+        
         self.vocabulary = vocab.vocabulary
     
     def download_data(self, url):
