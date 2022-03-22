@@ -15,7 +15,7 @@ from utils import DownloadProgressBar
 
 
 class Vocab:
-    def __init__(self, root, json, threshold, save_vocab=True):
+    def __init__(self, root, json, threshold, save_vocab=True, train=True):
         self.root = root
         self.json = json
         self.threshold = threshold
@@ -24,18 +24,22 @@ class Vocab:
         self.i2w = {}
         self.index = 0
         
-        nltk.download('punkt')
+        punkt_path = os.path.join(os.path.expanduser('~'), 'AppData', 'Roaming', 'nltk_data', 'tokenizers', 'punkt') # only for windows user
+        if not os.path.exists(punkt_path):
+            nltk.download('punkt')
         
-        if not os.path.exists(os.path.join(self.root, 'vocabulary.pkl')):        
+        if train:
+            self.pkl = 'vocabulary_train.pkl'
+        else:
+            self.pkl = 'vocabulary_val.pkl'
+        
+        if not os.path.exists(os.path.join(self.root, self.pkl)):
+            self.coco = COCO(self.json)
             self.build_vocabulary()
             if save_vocab:
                 self.save_vocab()
-            with open(os.path.join(self.root, 'vocabulary.pkl'), 'rb') as f:
-                self.vocabulary = pickle.load(f)
         else:
             print('Vocabulary already exists!')
-            with open(os.path.join(self.root, 'vocabulary.pkl'), 'rb') as f:
-                self.vocabulary = pickle.load(f)
         
     def __call__(self, token):
         if not token in self.w2i:
@@ -51,12 +55,11 @@ class Vocab:
             self.i2w[self.index] = token
             self.index += 1
             
-    def build_vocabulary(self):
-        coco = COCO(self.json)
+    def build_vocabulary(self):        
         counter = Counter()
-        ids = coco.anns.keys()
+        ids = self.coco.anns.keys()
         for i, id in enumerate(ids):
-            caption = str(coco.anns[id]['caption'])
+            caption = str(self.coco.anns[id]['caption'])
             tokens = nltk.tokenize.word_tokenize(caption.lower())
             counter.update(tokens)
             
@@ -74,10 +77,10 @@ class Vocab:
             self.add_token(token)
             
     def save_vocab(self):
-        with open(os.path.join(self.root, 'vocabulary.pkl'), 'wb') as f:
+        with open(os.path.join(self.root, self.pkl), 'wb') as f:
             pickle.dump(self, f)
         print(f'Total vocabulary size: {len(self)}')
-        print(f"Saved the vocabulary wrapper to {os.path.join(self.root, 'vocabulary.pkl')}")
+        print(f"Saved the vocabulary wrapper to {os.path.join(self.root, self.pkl)}")
         
         
 class CocoDataset(Dataset):
@@ -92,15 +95,24 @@ class CocoDataset(Dataset):
             print('Dataset already exists!')
         
         if train:
-            self.coco_data = COCO(os.path.join(self.root, 'annotations', 'captions_train2014.json'))
-            vocab = Vocab(self.root, os.path.join(self.root, 'annotations', 'captions_train2014.json'), 4)
+            if os.path.exists(os.path.join(self.root, 'vocabulary_train.pkl')):
+                with open(os.path.join(self.root, 'vocabulary_train.pkl'), 'rb') as f:
+                    vocab = pickle.load(f)
+            else:
+                vocab = Vocab(self.root, os.path.join(self.root, 'annotations', 'captions_train2014.json'), 4, train=True)
+            self.coco_data = vocab.coco
         else:
-            self.coco_data = COCO(os.path.join(self.root, 'annotations', 'captions_val2014.json'))
-            vocab = Vocab(self.root, os.path.join(self.root, 'annotations', 'captions_val2014.json'), 4)
+            if os.path.exists(os.path.join(self.root, 'vocabulary_val.pkl')):
+                with open(os.path.join(self.root, 'vocabulary_val.pkl'), 'rb') as f:
+                    vocab = pickle.load(f)
+            else:
+                vocab = Vocab(self.root, os.path.join(self.root, 'annotations', 'captions_val2014.json'), 4, train=False)
+            self.coco_data = vocab.coco
         self.indices = list(self.coco_data.anns.keys())
         self.transform = transform            
         
-        self.vocabulary = vocab.vocabulary
+        # self.vocabulary = vocab.vocabulary
+        self.vocabulary = vocab
     
     def download_data(self, url):
         print(f'Downloading {url}...')
