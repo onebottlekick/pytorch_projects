@@ -1,3 +1,4 @@
+import argparse
 import os
 
 import torch
@@ -8,11 +9,15 @@ from dataset import CocoDataset
 from model import CNN, LSTM
 from utils import captioning, load_test_img, plot_captioned_img
 
+parser = argparse.ArgumentParser(description='Image Captioning Model')
+parser.add_argument('--img_path', '-t', type=str, help='path to your target image', default='demo/sample.jpg')
+args = parser.parse_args()
+
 
 epoch = 5
 encoder_ckpt = os.path.join(MODEL_SAVE_DIR, f'encoder-{epoch}-{MODEL_SAVE_PERIOD}.ckpt')
 decoder_ckpt = os.path.join(MODEL_SAVE_DIR, f'decoder-{epoch}-{MODEL_SAVE_PERIOD}.ckpt')
-img_path = 'demo/sample.jpg'
+img_path = args.img_path
 
 transform = transforms.Compose([
     transforms.ToTensor(),
