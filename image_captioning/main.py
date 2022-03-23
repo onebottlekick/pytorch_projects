@@ -12,7 +12,7 @@ from utils import captioning, load_test_img, plot_captioned_img
 epoch = 5
 encoder_ckpt = os.path.join(MODEL_SAVE_DIR, f'encoder-{epoch}-{MODEL_SAVE_PERIOD}.ckpt')
 decoder_ckpt = os.path.join(MODEL_SAVE_DIR, f'decoder-{epoch}-{MODEL_SAVE_PERIOD}.ckpt')
-img_path = 'sample.jpg'
+img_path = 'demo/sample.jpg'
 
 transform = transforms.Compose([
     transforms.ToTensor(),
@@ -36,4 +36,4 @@ sampled_idx = decoder.sample(feature).squeeze(0).cpu().numpy()
 
 caption = captioning(sampled_idx, vocabulary)
 
-plot_captioned_img(img_path, caption, epoch, save=True, show=False)
+plot_captioned_img(img_path, caption, epoch, save=True, show=False, save_path='demo')
