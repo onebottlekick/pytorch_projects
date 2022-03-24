@@ -1,3 +1,4 @@
+import argparse
 import os
 import time
 
@@ -14,38 +15,8 @@ from model import CNN, LSTM
 from utils import collate_function
 
 
-if not os.path.exists(MODEL_SAVE_DIR):
-    os.makedirs(MODEL_SAVE_DIR)
-    
-
-DATASET = CocoDataset(
-    root='datasets',
-    download=True,
-    transform=TRANSFORM,
-    train=True
-)
-
-VOCABULARY = DATASET.vocabulary
-
-DATA_LOADER = DataLoader(
-    dataset=DATASET,
-    batch_size=BATCH_SIZE,
-    shuffle=True,
-    collate_fn=collate_function
-)
-
-encoder_ckpt = os.path.join(MODEL_SAVE_DIR, f'encoder-{4}-{MODEL_SAVE_PERIOD}.ckpt')
-decoder_ckpt = os.path.join(MODEL_SAVE_DIR, f'decoder-{4}-{MODEL_SAVE_PERIOD}.ckpt')
-
-ENCODER = CNN(EMBEDDING_SIZE).to(DEVICE)
-DECODER = LSTM(EMBEDDING_SIZE, HIDDEN_SIZE, len(VOCABULARY), 1).to(DEVICE)
-parameters = list(DECODER.parameters()) + list(ENCODER.linear_layer.parameters()) + list(ENCODER.batchnorm.parameters())
-
-CRITERION = nn.CrossEntropyLoss()
-OPTIMIZER = optim.Adam(parameters, lr=LEARNING_RATE)
-
 def train(data_loader, encoder, decoder, criterion, optimizer, saved_encoder=None, saved_decoder=None):
-    if os.path.exists(saved_encoder) and os.path.exists(saved_decoder):
+    if saved_encoder and saved_decoder:
         encoder.load_state_dict(torch.load(encoder_ckpt))
         decoder.load_state_dict(torch.load(decoder_ckpt))
         cur_epoch = int(encoder_ckpt.split('/')[-1].split('-')[1])
@@ -53,7 +24,7 @@ def train(data_loader, encoder, decoder, criterion, optimizer, saved_encoder=Non
         cur_epoch = 0
 
     total_steps = len(data_loader)
-    for epoch in range(cur_epoch, NUM_EPOCHS):
+    for epoch in range(cur_epoch, args.num_epochs):
         epoch_start = time.time()
 
         for i, (imgs, captions, caption_length) in enumerate(data_loader):
@@ -70,18 +41,68 @@ def train(data_loader, encoder, decoder, criterion, optimizer, saved_encoder=Non
             loss.backward()
             optimizer.step()
 
-            if i%TRAIN_LOG_PERIOD == 0:
-                print(f'Epoch [{epoch+1}/{NUM_EPOCHS}], Step [{i:4d}/{total_steps}], Loss: {loss.item():.4f}, Perplexity: {np.exp(loss.item()):5.4f}')
+            if i%args.train_log_period == 0:
+                print(f'Epoch [{epoch+1}/{args.num_epochs}], Step [{i:4d}/{total_steps}], Loss: {loss.item():.4f}, Perplexity: {np.exp(loss.item()):5.4f}')
 
-            if (i+1)%MODEL_SAVE_PERIOD == 0:
-                torch.save(decoder.state_dict(), os.path.join(MODEL_SAVE_DIR, f'decoder-{epoch+1}-{i+1}.ckpt'))
-                print(f'Saved decoder state_dict at {os.path.join(MODEL_SAVE_DIR, f"decoder-{epoch+1}-{i+1}.ckpt")}')
-                torch.save(encoder.state_dict(), os.path.join(MODEL_SAVE_DIR, f'encoder-{epoch+1}-{i+1}.ckpt'))
-                print(f'Saved encoder state_dict at {os.path.join(MODEL_SAVE_DIR, f"encoder-{epoch+1}-{i+1}.ckpt")}')
+            if (i+1)%args.model_save_period == 0:
+                torch.save(decoder.state_dict(), os.path.join(args.model_save_dir, f'decoder-{epoch+1}-{i+1}.ckpt'))
+                print(f'Saved decoder state_dict at {os.path.join(args.model_save_dir, f"decoder-{epoch+1}-{i+1}.ckpt")}')
+                torch.save(encoder.state_dict(), os.path.join(args.model_save_dir, f'encoder-{epoch+1}-{i+1}.ckpt'))
+                print(f'Saved encoder state_dict at {os.path.join(args.model_save_dir, f"encoder-{epoch+1}-{i+1}.ckpt")}')
 
         epoch_end = time.time()
         epoch_time = epoch_end - epoch_start
         print(f'took {epoch_time:4f}s/Epoch')
         
 if __name__ == '__main__':
-    train(DATA_LOADER, ENCODER, DECODER, CRITERION, OPTIMIZER, encoder_ckpt, decoder_ckpt)
+    epilog = 'example: python train.py --batch_size 256 --num_epochs 5 --load_model 2'
+    parser = argparse.ArgumentParser(description='Train Image Captioning Model - Encoder(CNN)->Decoder(LSTM). \
+        Default arguments are in config.py', epilog=epilog)
+    
+    parser.add_argument('--batch_size', default=BATCH_SIZE, type=int, help='batch size of dataset')
+    parser.add_argument('--num_epochs', type=int, default=NUM_EPOCHS, help='number of train epochs')
+    parser.add_argument('--learning_rate', '--lr', type=float, default=LEARNING_RATE, help='learning rate')
+    parser.add_argument('--device', type=str, default=DEVICE, help='device to train model')
+    
+    parser.add_argument('--embedding_size', type=int, default=EMBEDDING_SIZE, help='embedding size')
+    parser.add_argument('--hidden_size', type=int, default=HIDDEN_SIZE, help='hidden size')
+    
+    parser.add_argument('--load_model', default=None, help='index of saved model')
+    parser.add_argument('--model_save_dir', type=str, default=MODEL_SAVE_DIR, help='path to save the model')
+    parser.add_argument('--model_save_period', type=int, default=MODEL_SAVE_PERIOD, help='iterations to save the model')
+    parser.add_argument('--train_log_period', type=int, default=TRAIN_LOG_PERIOD, help='train log interval(iterations)')
+    args = parser.parse_args()
+    
+    if not os.path.exists(args.model_save_dir):
+        os.makedirs(args.model_save_dir)
+
+
+    DATASET = CocoDataset(
+        root='datasets',
+        download=True,
+        transform=TRANSFORM,
+        train=True
+    )
+
+    VOCABULARY = DATASET.vocabulary
+
+    DATA_LOADER = DataLoader(
+        dataset=DATASET,
+        batch_size=args.batch_size,
+        shuffle=True,
+        collate_fn=collate_function
+    )
+    
+    ENCODER = CNN(args.embedding_size).to(args.device)
+    DECODER = LSTM(args.embedding_size, args.hidden_size, len(VOCABULARY), 1).to(args.device)
+    parameters = list(DECODER.parameters()) + list(ENCODER.linear_layer.parameters()) + list(ENCODER.batchnorm.parameters())
+
+    CRITERION = nn.CrossEntropyLoss()
+    OPTIMIZER = optim.Adam(parameters, lr=args.learning_rate)
+    
+    if args.load_model:
+        decoder_ckpt = os.path.join(args.model_save_dir, f'decoder-{args.load_model}-{args.model_save_period}.ckpt')
+        encoder_ckpt = os.path.join(args.model_save_dir, f'encoder-{args.load_model}-{args.model_save_period}.ckpt')
+        train(DATA_LOADER, ENCODER, DECODER, CRITERION, OPTIMIZER, encoder_ckpt, decoder_ckpt)
+    else:
+        train(DATA_LOADER, ENCODER, DECODER, CRITERION, OPTIMIZER)
