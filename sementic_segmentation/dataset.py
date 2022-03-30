@@ -18,7 +18,7 @@ class DownloadProgress(tqdm):
 
 
 class VOC2012(Dataset):
-    def __init__(self, root='../datasets', download=False, train=True, transform=None):
+    def __init__(self, root='datasets', download=False, train=True, transform=None):
         self.root = root
         if download:
             self.download_extract_VOC()
