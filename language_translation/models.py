@@ -28,9 +28,9 @@ class Decoder(nn.Module):
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
         
-        self.embedding = nn.Embedding(output_dim, hidden_dim)
+        self.embedding = nn.Embedding(output_dim, embed_dim)
         self.dropout = nn.Dropout(dropout)
-        self.rnn = nn.LSTM(embed_dim, hidden_dim, n_layers, dropout)
+        self.rnn = nn.LSTM(embed_dim, hidden_dim, n_layers, dropout=dropout)
         self.fc = nn.Linear(hidden_dim, output_dim)
         
     def forward(self, input, hidden, cell):
@@ -43,6 +43,7 @@ class Decoder(nn.Module):
     
 class Seq2Seq(nn.Module):
     def __init__(self, encoder, decoder, device):
+        super(Seq2Seq, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
         self.device = device
@@ -61,7 +62,7 @@ class Seq2Seq(nn.Module):
             output, hidden, cell = self.decoder(input, hidden, cell)
             outputs[t] = output
             
-            teacher_force = random.random() < teacher_force
+            teacher_force = random.random() < teacher_forcing_ratio
             top = output.argmax(1)
             input = target[t] if teacher_force else top
         return outputs
