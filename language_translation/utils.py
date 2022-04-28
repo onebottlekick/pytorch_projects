@@ -35,6 +35,7 @@ def plot_loss(train_losses, val_losses):
         plt.ylabel('Loss')
         plt.plot(train_losses, label='train')
         plt.plot(val_losses, label='val')
+        plt.legend()
         plt.text(len(train_losses) - 1, train_losses[-1], str(train_losses[-1]))
         plt.text(len(val_losses) - 1, val_losses[-1], str(val_losses[-1]))
         plt.show()
