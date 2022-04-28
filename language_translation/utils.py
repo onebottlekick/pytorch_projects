@@ -1,4 +1,6 @@
+import matplotlib.pyplot as plt
 import torch.nn as nn
+from IPython import display
 
 
 def tokenize(text, nlp, reverse=False):
@@ -18,5 +20,23 @@ def init_weights(module):
     for name, param in module.named_parameters():
         nn.init.uniform_(param.data, -0.08, 0.08)
         
+        
 def count_parameters(model):
     return sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)
+
+
+def plot_loss(train_losses, val_losses):
+    with plt.ion():
+        display.clear_output(wait=True)
+        display.display(plt.gcf())
+        plt.clf()
+        
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.plot(train_losses, label='train')
+        plt.plot(val_losses, label='val')
+        plt.text(len(train_losses) - 1, train_losses[-1], str(train_losses[-1]))
+        plt.text(len(val_losses) - 1, val_losses[-1], str(val_losses[-1]))
+        plt.show()
+        
+        plt.pause(0.1)

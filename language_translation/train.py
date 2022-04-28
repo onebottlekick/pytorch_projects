@@ -6,7 +6,7 @@ import torch.nn as nn
 
 from configs import *
 from models import Encoder, Decoder, Seq2Seq
-from utils import epoch_time, init_weights
+from utils import epoch_time, init_weights, plot_loss
 from dataset import SRC, TRG, train_iterator, val_iterator
 
 
@@ -66,15 +66,22 @@ if __name__ == '__main__':
     criterion = nn.CrossEntropyLoss(ignore_index=target_pad_idx)
         
     best_val_loss = float('inf')
+    
+    train_losses = []
+    val_losses = []
     for epoch in range(N_EPOCHS):
         start_time = time.time()
         
         train_loss = train(model, train_iterator, optimizer, criterion, CLIP)
+        train_losses.append(train_loss)
         val_loss = evaluate(model, val_iterator, criterion)
+        val_losses.append(val_loss)
         
         end_time = time.time()
         
         epoch_mins, epoch_secs = epoch_time(start_time, end_time)
+        
+        plot_loss(train_losses, val_losses)
         
         if val_loss < best_val_loss:
             best_val_loss = val_loss
